@@ -78,23 +78,6 @@ func getBooksHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(fetchedBooks)
 }
 
-func main() {
-	if err := connectDB(); err != nil {
-		log.Fatal(err)
-	}
-
-	router := mux.NewRouter()
-	router.HandleFunc("/api/books", getBooksHandler).Methods("GET")
-
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
-
-	http.Handle("/", http.FileServer(http.Dir(".")))
-	http.Handle("/api/", http.StripPrefix("/api", router))
-
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
 func addBookHandler(w http.ResponseWriter, r *http.Request) {
 	var newBook Book
 
@@ -115,6 +98,44 @@ func addBookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Отправка обновленного списка книг в ответе
+	log.Println("Book added successfully:", newBook)
+
 	getBooksHandler(w, r)
+}
+
+func uploadFileHandler(w http.ResponseWriter, r *http.Request) {
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Error retrieving the file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Ваш код для сохранения содержимого файла в базе данных или файловой системе
+	// Например, вы можете прочитать содержимое файла и сохранить его в базе данных
+
+	// В данном примере просто выводим информацию о файле в консоль
+	log.Printf("File uploaded: %s (Size: %d bytes)", handler.Filename, handler.Size)
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func main() {
+	if err := connectDB(); err != nil {
+		log.Fatal(err)
+	}
+
+	router := mux.NewRouter()
+	router.HandleFunc("/api/books", getBooksHandler).Methods("GET")
+	router.HandleFunc("/api/books", addBookHandler).Methods("POST")
+	router.HandleFunc("/api/upload", uploadFileHandler).Methods("POST")
+
+	// Обработка статических файлов
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	http.Handle("/", http.FileServer(http.Dir(".")))
+	http.Handle("/api/", http.StripPrefix("/api", router))
+
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
