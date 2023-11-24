@@ -94,3 +94,27 @@ func main() {
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
+func addBookHandler(w http.ResponseWriter, r *http.Request) {
+	var newBook Book
+
+	err := json.NewDecoder(r.Body).Decode(&newBook)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	collection := client.Database("bookstoredb").Collection("books")
+
+	newBook.ID = primitive.NewObjectID()
+
+	_, err = collection.InsertOne(context.TODO(), newBook)
+	if err != nil {
+		log.Println("Error inserting book:", err)
+		http.Error(w, "Error inserting book", http.StatusInternalServerError)
+		return
+	}
+
+	// Отправка обновленного списка книг в ответе
+	getBooksHandler(w, r)
+}
